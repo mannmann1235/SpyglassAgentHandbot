@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spyglass Agent Handbook Assistant (Grayscale)</title>
+<style>
+  :root{
+    --bg:#f3f4f5;
+    --panel:#ffffff;
+    --border:#d7d9dc;
+    --text:#222;
+    --muted:#666;
+    --accent:#888; /* stay gray */
+    --user1:#4a4a4a;
+    --user2:#6b6b6b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji";
+    color:var(--text); background:var(--bg);
+  }
+  .wrap{max-width: 980px; margin: 24px auto; padding: 0 16px;}
+  .header{
+    text-align:center; padding: 18px 0 6px 0;
+  }
+  .header .icon{font-size: 40px; margin-bottom: 8px;}
+  .header h1{margin: 0 0 4px 0; font-size: 22px; color: var(--user1); font-weight:700;}
+  .header p{margin: 0; color: var(--muted); font-size: 14px;}
+  .suggest{
+    background: var(--panel); border:1px solid var(--border); border-radius: 14px;
+    padding: 16px; margin: 16px 0;
+  }
+  .suggest h3{margin:0 0 8px 0; color:#333;}
+  .chat{
+    background: var(--panel); border:1px solid var(--border); border-radius: 16px;
+    height: 60vh; overflow-y: auto; padding: 16px;
+  }
+  .msg{ margin: 12px 0; padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.55; white-space: pre-wrap; }
+  .msg.user{
+    margin-left:auto; color: #fff; background: linear-gradient(135deg, var(--user1), var(--user2)); text-align: right;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  }
+  .msg.bot{ background:#fff; border:1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+  .msg.bot strong{ color:#333; }
+  .input{
+    display:flex; gap:10px; margin-top: 14px;
+  }
+  .input input{
+    flex:1; border:2px solid var(--border); border-radius: 22px; padding: 12px 16px; font-size: 15px; outline:none;
+  }
+  .input input:focus{ border-color: #b0b3b8; box-shadow: 0 0 0 3px rgba(120,120,120,.1); }
+  .input button{
+    border:0; background: #e5e6e8; color:#222; padding: 12px 18px; border-radius: 22px; font-weight: 700; cursor:pointer;
+  }
+  .input button:hover{ background:#dcdde0; }
+  .footer{ text-align:center; color:#8a8a8a; font-size: 12px; margin-top: 12px; }
+  .bot pre{white-space: pre-wrap; font-family: inherit; }
+  .hint{ color: var(--muted); font-size: 12px; margin-top: 4px;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="icon">🏢</div>
+      <h1>Spyglass Agent Handbook Assistant</h1>
+      <p>Ask me anything about policies, procedures, and office info. (Grayscale UI)</p>
+    </div>
+
+    <div id="welcome" class="suggest" role="region" aria-label="Welcome">
+      <h3>Hello! 👋</h3>
+      <p>I can help you find info quickly from the Agent Handbook.</p>
+      <div id="suggestions"></div>
+    </div>
+
+    <div id="chat" class="chat" role="log" aria-live="polite"></div>
+
+    <div class="input">
+      <input id="query" type="text" placeholder="Type your question here... (e.g., 'What's the door code?')" />
+      <button id="send" type="button">Send →</button>
+    </div>
+    <div class="hint">Tip: Try keywords like "door code", "wifi", "onboarding", "training", "FUB", "ReZen", "signage".</div>
+
+    <div class="footer">Grayscale HTML conversion of the Shiny app • No external libraries</div>
+  </div>
+
+<script>
+// ---- Knowledge Base (converted from R list) ----
+const KB = [
+  { keywords: ["door","code","lock","access","entry","office code","door code"],
+    answer: "<strong>Office Door Codes:</strong><br><br><strong>South Lamar Office:</strong> 1357<br><strong>North Austin Office:</strong> 1454 Schulage (turn lock to the left)<br><strong>North Austin Bathroom (weekends):</strong> 4848<br><br>The South Lamar door locks automatically after 5 minutes for safety." },
+  { keywords: ["wifi","password","internet","network","wireless"],
+    answer: "<strong>WiFi Information:</strong><br><br><strong>South Lamar Office:</strong><br>Network: spyglassheartwood<br>Password: 5129651480<br><br><strong>North Austin Office:</strong><br>Network: Spyglass Realty - North<br>Password: 5129651480" },
+  { keywords: ["transaction","coordination","tc pro","tc essential","tc","transaction coordinator"],
+    answer: "<strong>Transaction Coordination Services:</strong><br><br><strong>TC Pro</strong> - Full-service, concierge-style coordination<br>&bull; $350 for SOI deals<br>&bull; $200 for company leads<br><br><strong>TC Essential</strong> - Basic compliance paperwork help<br>&bull; $125 for SOI deals<br>&bull; Included for company leads<br><br>Contact: transactions@spyglassrealty.com" },
+  { keywords: ["office","location","address","where","building"],
+    answer: "<strong>Office Locations:</strong><br><br><strong>South Lamar Office:</strong><br>2130 Goodrich Ave.<br>Austin, TX 78704<br><br><strong>North Austin Office:</strong><br>5818 Balcones Dr., Unit 202 (upstairs)<br>Austin, TX 78731<br><br>Both offices are open 24/7 for use." },
+  { keywords: ["team","leadership","who","contact","staff","management"],
+    answer: "<strong>Key Team Members:</strong><br><br>&bull; <strong>Ryan Rodenbeck</strong> - Owner/Broker/CEO<br>&bull; <strong>Sunny Tracey</strong> - Director of Operations, COO<br>&bull; <strong>John McCarthy</strong> - Director of Sales<br>&bull; <strong>Caleb Nelson</strong> - Director of Marketing<br>&bull; <strong>Joey Wilkes</strong> - Business Development Manager<br>&bull; <strong>Pam Metzger</strong> - Relocation Director<br>&bull; <strong>Kyle Anderman</strong> - Sales Manager (Houston)<br>&bull; <strong>Randi White</strong> - Transactions Team Lead" },
+  { keywords: ["onboarding","new agent","getting started","start","begin","join"],
+    answer: "<strong>Onboarding Steps:</strong><br><br>1. Receive welcome email from Joey Wilkes<br>2. Get Spyglass email &amp; FUB login from Caleb Nelson<br>3. Receive onboarding invite from Sunny Tracey<br>4. Register with REAL ($250 joining fee)<br>5. Enter 'blank' for sponsor name &amp; email on ICA<br>6. Request TREC sponsorship<br>7. Login to ReZen for transactions<br>8. Complete Kajabi onboarding course" },
+  { keywords: ["marketing","business card","branding","logo","design"],
+    answer: "<strong>Marketing Services:</strong><br><br>&bull; Digital business card provided upon joining (contact Caleb)<br>&bull; Printed card templates available on XpressDocs portal<br>&bull; In-house graphic designer available<br>&bull; Templates for postcards, door hangers, eFlyers, etc.<br>&bull; All materials must be approved by Caleb before distribution<br>&bull; Must follow TREC advertising rules<br>&bull; Logo cannot be altered" },
+  { keywords: ["sign","signage","yard sign","directional","stokes"],
+    answer: "<strong>Signage Orders:</strong><br><br>Order through <strong>Stokes Sign Company</strong> custom portal:<br>&bull; Create account and customize your order<br>&bull; Options for listing yard signs, frames, directional signs<br>&bull; Can integrate with Sign Otter for storage/logistics<br><br><strong>⚠️ NO signage available for pickup at office locations</strong>" },
+  { keywords: ["training","meeting","huddle","sales training","learn"],
+    answer: "<strong>Training Opportunities:</strong><br><br>&bull; <strong>Quarterly Meetings</strong> - Last week of each month (Wednesday mornings)<br>&bull; <strong>Weekly Sales Training</strong> - Every Wednesday 10am-1pm (virtual &amp; in-person)<br>&bull; <strong>Tuesday Huddle</strong> - Every Tuesday 10:30am (REQUIRED for company leads)<br>&bull; <strong>Slack Channels</strong> - Resources in Agent Onboarding &amp; Sales Training<br>&bull; <strong>Happy Hours</strong> - First Thursday of each month" },
+  { keywords: ["fub","follow up boss","crm","stages","leads","contacts"],
+    answer: "<strong>Follow Up Boss (FUB) Stages:</strong><br><br>&bull; <strong>Lead</strong> - New leads, unknown motivation<br>&bull; <strong>Buyer</strong> - Actively buying within 12 months<br>&bull; <strong>Seller</strong> - Listing leads, actively working with<br>&bull; <strong>Nurture</strong> - More than 12 months from transaction<br>&bull; <strong>Sphere</strong> - People you KNOW who may refer business<br>&bull; <strong>Hot Prospect</strong> - Moving within 3 months<br>&bull; <strong>Pending</strong> - Under contract<br>&bull; <strong>Past Client</strong> - Past clients only<br>&bull; <strong>Contact</strong> - Gets e-blasts but not on campaign<br>&bull; <strong>Trash</strong> - Spam/will never become business<br><br>📝 Always log detailed call notes!" },
+  { keywords: ["app","software","technology","tech","download","tools"],
+    answer: "<strong>Required Apps to Download:</strong><br><br>&bull; <strong>FollowUpBoss</strong> - CRM, calls, texts, contacts<br>&bull; <strong>Slack</strong> - Team communication (IMPORTANT!)<br>&bull; <strong>Gmail</strong> - Your spyglassrealty.com email<br>&bull; <strong>Google Calendar</strong> - Schedule trainings, book rooms<br>&bull; <strong>Kajabi</strong> - Training courses<br>&bull; <strong>Jointly</strong> - Offer writing &amp; management<br>&bull; <strong>ReZen</strong> - Transaction management (Real's system)<br>&bull; <strong>Zillow Premier Agent</strong> - For Zillow Flex leads" },
+  { keywords: ["help","question","who to ask","support","assistance"],
+    answer: "<strong>Who to Contact:</strong><br><br>🚨 <strong>URGENT?</strong> Use your Agent Development Slack channel with leadership team first!<br><br>&bull; <strong>Leads Product</strong> - Johnny, Kyle<br>&bull; <strong>Admin/Commissions/Compliance</strong> - Sunny, Randi<br>&bull; <strong>Marketing</strong> - Caleb<br>&bull; <strong>Technology</strong> - Sunny, Johnny, or Caleb<br>&bull; <strong>Onboarding</strong> - Sunny, Joey, Kyle<br>&bull; <strong>Contracts</strong> - Sunny, Johnny, or Team Leader<br>&bull; <strong>Referrals</strong> - Pam" },
+  { keywords: ["printer","print","xerox","printing"],
+    answer: "<strong>Printer Information:</strong><br><br>Xerox C605 available at both offices (on WiFi)<br><br>You'll need to add the printer in your device settings. Both printers are wireless." },
+  { keywords: ["kitchen","food","coffee","keurig","water"],
+    answer: "<strong>Kitchen Amenities:</strong><br><br>&bull; Keurig coffee maker with disposable cups<br>&bull; Filtered water machine (bring refillable bottle)<br>&bull; Full kitchen available for use<br>&bull; No dishwasher - please don't leave dirty dishes<br>&bull; Bring your own food when working at office" },
+  { keywords: ["mls","abor","matrix","transactiondesk","authentisign"],
+    answer: "<strong>ABOR/MLS Access:</strong><br><br>&bull; Use <strong>TransactionDesk</strong> for contract writing (free with ABOR)<br>&bull; Use <strong>AuthentiSign</strong> for digital signatures (free)<br>&bull; Spyglass does NOT subscribe to other signing tools<br>&bull; Change office info in Matrix if transferring from another brokerage<br>&bull; Search Workplace for TransactionDesk tutorials" },
+  { keywords: ["photography","photos","listing photos","professional photos"],
+    answer: "<strong>Listing Photography:</strong><br><br>Professional photos are REQUIRED for all Spyglass listings.<br><br>Contact James Oswald for photography and content creation services." },
+  { keywords: ["mentor","mentoring","new agent mentor","first transaction"],
+    answer: "<strong>New Agent Mentoring:</strong><br><br>You'll be assigned a mentor during onboarding. Mentors may vary by transaction based on availability and deal specifics.<br><br><strong>⚠️</strong> First THREE company lead transactions have a 2.5% mentor fee from agent's split.<br><br>Refer to your fee schedule for specific rates and terms." },
+  { keywords: ["real","register","joining fee","sponsor"],
+    answer: "<strong>REAL Registration:</strong><br><br>&bull; $250 joining fee required<br>&bull; Click 'Yes, I would like to name a sponsor' on ICA<br>&bull; Enter 'blank' for both sponsor name and email<br>&bull; Spyglass Leadership already communicated with Real as your sponsors" },
+  { keywords: ["rezen","transaction","backend","compliance"],
+    answer: "<strong>ReZen System:</strong><br><br>ReZen is Real's transaction, compliance and backend system.<br><br><strong>Enter here:</strong> All transactional data, financial info, documents, compliance<br><strong>Also access:</strong> Stock options and revenue share data<br><br>📝 Enter any new transaction into ReZen immediately. For pending transactions, ping April after registration." },
+  { keywords: ["email","spyglass email","gmail"],
+    answer: "<strong>Spyglass Email:</strong><br><br>You'll receive a Gmail-based email (@spyglassrealty.com) from Caleb Nelson during onboarding.<br><br>This provides a full Google account linked to your Spyglass email for accessing all company applications." },
+  { keywords: ["conference room","reserve","booking","meeting room"],
+    answer: "<strong>Conference Room Reservations:</strong><br><br>&bull; Rooms hold about 10 people<br>&bull; Available for private client meetings<br>&bull; First come, first served for coworking space<br><br><strong>To Reserve:</strong> Book time in your Spyglass Google Calendar and select 'Add Room' to choose the specific room." },
+  { keywords: ["mail","delivery","package","shipping"],
+    answer: "<strong>Mail &amp; Deliveries:</strong><br><br><strong>⚠️</strong> No receptionist or mail room at either office<br><br>You CAN use office addresses for deliveries, but YOU are responsible for pickup." },
+  { keywords: ["geographic competency","competence","market knowledge","local expertise"],
+    answer: "<strong>Geographic Competency Requirements:</strong><br><br>TREC requires agents to be knowledgeable about local markets where they work.<br><br><strong>Build competency by:</strong><br>&bull; Searching MLS data &amp; running CMAs<br>&bull; Reviewing county appraisal district websites<br>&bull; Studying property records<br>&bull; Talking to local service providers<br>&bull; Conducting market studies<br>&bull; Visiting neighborhoods in person<br><br>Your broker can be a resource for competency questions." },
+  { keywords: ["referral","outbound referral","leading real estate"],
+    answer: "<strong>Referrals:</strong><br><br>Contact <strong>Pam Metzger</strong> (Relocation Director) for ALL outbound referral opportunities.<br><br>She manages relationships with 3rd party referral partners and our membership in Leading Real Estate Companies of the World." }
+];
+
+// --------- Jaro-Winkler similarity ---------
+function jaro(a, b){
+  if (!a.length && !b.length) return 1.0;
+  const matchDistance = Math.floor(Math.max(a.length, b.length)/2)-1;
+  const aMatches = new Array(a.length).fill(false);
+  const bMatches = new Array(b.length).fill(false);
+  let matches = 0, transpositions = 0;
+
+  for (let i=0;i<a.length;i++){
+    const start = Math.max(0, i - matchDistance);
+    const end = Math.min(i + matchDistance + 1, b.length);
+    for (let j=start;j<end;j++){
+      if (bMatches[j]) continue;
+      if (a[i] !== b[j]) continue;
+      aMatches[i] = true;
+      bMatches[j] = true;
+      matches++;
+      break;
+    }
+  }
+  if (matches === 0) return 0;
+  let k = 0;
+  for (let i=0;i<a.length;i++){
+    if (!aMatches[i]) continue;
+    while (!bMatches[k]) k++;
+    if (a[i] !== b[k]) transpositions++;
+    k++;
+  }
+  return ( (matches / a.length) + (matches / b.length) + ((matches - transpositions/2) / matches) ) / 3.0;
+}
+
+function jaroWinkler(a, b){
+  const j = jaro(a, b);
+  // common prefix up to 4
+  let l = 0;
+  const maxL = Math.min(4, a.length, b.length);
+  while (l < maxL && a[l] === b[l]) l++;
+  const p = 0.1;
+  return j + l * p * (1 - j);
+}
+
+// ------------- Matching Logic ---------------
+function findBestMatch(query, threshold=0.5){
+  const queryClean = query.trim().toLowerCase();
+  if (!queryClean) return null;
+  const queryWords = queryClean.split(/\s+/);
+
+  let best = null;
+  let bestScore = 0;
+
+  KB.forEach(item => {
+    let itemScore = 0;
+    item.keywords.forEach(keyword => {
+      const kw = keyword.toLowerCase();
+      // exact substring
+      if (queryClean.indexOf(kw) !== -1){
+        itemScore = Math.max(itemScore, 1.0);
+        return;
+      }
+      // word-level max sim among pairs
+      const kwWords = kw.split(/\s+/);
+      let maxWord = 0;
+      queryWords.forEach(qw => {
+        kwWords.forEach(kw2 => {
+          const sim = jaroWinkler(qw, kw2);
+          if (sim > maxWord) maxWord = sim;
+        });
+      });
+      if (maxWord > itemScore) itemScore = maxWord;
+    });
+    if (itemScore > bestScore){
+      bestScore = itemScore;
+      best = item;
+    }
+  });
+
+  if (best && bestScore >= threshold) return best.answer;
+  return null;
+}
+
+function getSuggestions(){
+  const copy = [...KB];
+  for (let i=copy.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  const picks = copy.slice(0, Math.min(6, copy.length)).map(x => x.keywords[0]);
+  return "**Try asking about:**\n" + picks.map(k => "• " + k).join("\\n");
+}
+
+// ---- UI helpers ----
+const chatEl = document.getElementById('chat');
+const queryEl = document.getElementById('query');
+const sendEl = document.getElementById('send');
+const welcomeEl = document.getElementById('welcome');
+const suggestionsEl = document.getElementById('suggestions');
+
+function appendMsg(type, html){
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  div.innerHTML = html;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function mdToHtml(md){
+  return md
+    .replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>')
+    .replace(/\\n/g, '<br>');
+}
+
+function initWelcome(){
+  const s = getSuggestions();
+  suggestionsEl.innerHTML = "<pre style='margin:0'>" + s + "</pre>";
+}
+
+function handleSend(){
+  const q = queryEl.value.trim();
+  if (!q) return;
+  if (welcomeEl) welcomeEl.style.display = 'none';
+
+  appendMsg('user', q);
+  queryEl.value = '';
+
+  const ans = findBestMatch(q, 0.5);
+  if (ans){
+    appendMsg('bot', ans);
+  } else {
+    const fallback = [
+      "I couldn't find a specific answer to that question. Please try rephrasing or ask about:",
+      "",
+      "• Door codes & WiFi",
+      "• Office locations & hours",
+      "• Team contacts & who to ask",
+      "• Transaction coordination",
+      "• Onboarding process",
+      "• Marketing & branding",
+      "• Training opportunities",
+      "• Technology & apps",
+      "• MLS/ABOR access"
+    ].join("<br>");
+    appendMsg('bot', fallback);
+  }
+}
+
+sendEl.addEventListener('click', handleSend);
+queryEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    handleSend();
+  }
+});
+
+initWelcome();
+</script>
+</body>
+</html>
